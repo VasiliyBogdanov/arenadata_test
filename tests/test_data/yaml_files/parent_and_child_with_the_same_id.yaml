@@ -1,0 +1,8 @@
+- id: valid_parent
+  label: valid_parent
+  link: https://google.com
+
+- id: valid_parent
+  label: valid_child
+  link: https://yandex.ru
+  depends: valid_parent
