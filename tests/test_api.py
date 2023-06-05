@@ -1,6 +1,7 @@
 import pytest
 
-from conftest import TEMPLATES, get_resp_message, get_templates_message
+from conftest import (TEMPLATES, format_wrong_yaml_message, get_resp_message,
+                      get_templates_message)
 
 from .test_data.api_responses import (INCORRECT_FILETYPE, INSTALL_SUCCESS,
                                       INVALID_TEMPLATE_FORMAT,
@@ -75,8 +76,10 @@ def test_post_minimum_valid_template_with_tmpl_id(api):
 def test_post_incorrect_filetype(api, filepath):
     resp = api.post_template(filepath.value)
     status_code = resp.status_code
+    text_message, formats = format_wrong_yaml_message(resp)
 
-    assert resp.json() == INCORRECT_FILETYPE
+    assert text_message + \
+        "{{{}}}".format(formats) == INCORRECT_FILETYPE.format(formats)
     assert status_code == 400
 
 
@@ -93,7 +96,8 @@ def test_post_same_file_twice(api):
     for i in range(2):
         api.post_template(TEMPLATES.minimum_valid.value)
 
-    assert len(get_templates_message(api.get_templates())) == 1
+    assert len(get_templates_message(api.get_templates())) == 1,\
+        "Posting the same file twice should result in rewriting, not creating new one"
 
 
 @pytest.mark.parametrize("filename", [
@@ -146,8 +150,9 @@ def test_install_template_with_dependency_which_does_not_exist(api, populate_wit
     tmpl_id = TEMPLATES.with_nonexistent_parent_element.name
     resp = api.install_template(tmpl_id)
     status_code = resp.status_code
+    resp_message = get_resp_message(resp)
 
-    assert resp.json() == WRONG_DEPENDENCY
+    assert resp_message == WRONG_DEPENDENCY
     assert status_code == 400
 
 
@@ -155,8 +160,9 @@ def test_install_template_without_label_with_link(api, populate_with_test_data):
     tmpl_id = TEMPLATES.without_label_with_link.name
     resp = api.install_template(tmpl_id)
     status_code = resp.status_code
+    resp_message = get_resp_message(resp)
 
-    assert resp.json() == LINK_WITHOUT_LABEL_NOT_ALLOWED
+    assert resp_message == LINK_WITHOUT_LABEL_NOT_ALLOWED
     assert status_code == 400
 
 # DELETE

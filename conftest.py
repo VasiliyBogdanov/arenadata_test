@@ -66,6 +66,21 @@ def dir_exists(path: Path):
         return True
     return False
 
+
+def format_wrong_yaml_message(message):
+    resp_message = get_resp_message(message)
+    index_of_opening_brace = resp_message.find("{")
+    index_of_closing_brace = resp_message.find("}")
+
+    text_message = resp_message[:index_of_opening_brace]
+
+    formats = resp_message[index_of_opening_brace:index_of_closing_brace+1]
+    formats = formats[1:-1].split(", ")
+    formats = sorted(formats)
+    formats = ", ".join(formats)
+
+    return (text_message, formats)
+
 # end of helper functions
 
 
