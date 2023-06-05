@@ -1,7 +1,9 @@
 import os
+from datetime import datetime as dt
 from enum import Enum
 from pathlib import Path
 
+import allure
 import pytest
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -11,7 +13,8 @@ from webdriver_manager.chrome import ChromeDriverManager
 from tests.helpers.API import API
 
 APP_ADDRESS = os.getenv("MAIN_APP_ADDRESS")
-PATH_FOR_DRIVERS = Path().cwd().joinpath(Path("browser_drivers/"))
+PATH_FOR_DRIVERS = Path.cwd().joinpath(Path("browser_drivers/"))
+PATH_FOR_SCREENSHOTS = Path.cwd().joinpath(Path("screenshots/"))
 
 
 class TEMPLATES(Enum):
@@ -57,6 +60,12 @@ def get_resp_message(resp):
 def get_templates_message(resp):
     return resp.json().get("templates")
 
+
+def dir_exists(path: Path):
+    if Path.exists(path) and Path.is_dir(path):
+        return True
+    return False
+
 # end of helper functions
 
 
@@ -86,12 +95,49 @@ def clean_up_templates_after_all_tests(api):
     cleanup(api)
 
 
+@pytest.hookimpl(hookwrapper=True, tryfirst=True)
+def pytest_runtest_makereport(item, call):
+    # This function helps to detect that some test failed
+    # and pass this information to teardown:
+
+    outcome = yield
+    rep = outcome.get_result()
+    setattr(item, "rep_" + rep.when, rep)
+    return rep
+
+
 @pytest.fixture
-def chrome_driver():
+def chrome_driver(request):
     chrome_options = Options()
     chrome_options.add_argument('--headless')
 
     driver = webdriver.Chrome(service=Service(ChromeDriverManager(path=PATH_FOR_DRIVERS).install()),
-                              options=chrome_options,)
+                              options=chrome_options)
     yield driver
+    if request.node.rep_call.failed:
+        # Make the screen-shot if test failed:
+        try:
+            driver.execute_script("document.body.bgColor = 'white';")
+
+            # Save screenshot for local debug
+            if not dir_exists(PATH_FOR_SCREENSHOTS):
+                os.mkdir(PATH_FOR_SCREENSHOTS)
+
+            driver.get_screenshot_as_file(
+                str(PATH_FOR_SCREENSHOTS) + os.sep +
+                str(request.node.name) + str(dt.today().strftime('__%Y-%m-%dT%H-%M-%S%f%z')) + '.png')
+            # Attach screenshot to Allure report:
+            allure.attach(driver.get_screenshot_as_png(),
+                          name=request.function.__name__,
+                          attachment_type=allure.attachment_type.PNG)
+
+            # For happy debugging:
+            print('URL: ', driver.current_url)
+            print('Browser logs:')
+            for log in driver.get_log('browser'):
+                print(log)
+
+        except Exception as e:
+            print(e)
+
     driver.quit()

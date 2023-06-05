@@ -7,3 +7,5 @@ dist/
 coverage.xml
 .pytest_cache/
 browser_drivers/
+allure_reports/
+screenshots/
