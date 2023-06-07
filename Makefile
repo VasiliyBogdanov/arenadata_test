@@ -7,6 +7,6 @@ test_web:
 test_and_report:
 	@pytest -vvs --alluredir=./allure_reports
 show_allure:
-	allure serve ./allure_reports
+	@allure serve ./allure_reports
 
 .PHONY: test test_api test_web show_allure test_and_report
